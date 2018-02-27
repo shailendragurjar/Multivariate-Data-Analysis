@@ -1,0 +1,170 @@
+---
+title: "MNG Assignment 3"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE, message=FALSE, results='hide'}
+library(data.table)
+library(ggplot2)
+library(AID)
+library(knitr)
+library(gridExtra)
+```
+## Problem 4.25 - Construct a chi square plot for the world's 10 largest companies.
+To construct chi square plot, we first calculated the squared distance and plotted it against theoretical quantiles.
+
+```{r}
+Forbes<- read.table("~/Documents/IIT SOM/Semester 2/MNG744 - Multivariate Data Analysis/Wichern_data/P1-4.DAT")
+setnames(Forbes, old=c("V1","V2","V3"),new= c("Sales","Profits","Assets"))
+Forbes_mean <- colMeans(Forbes)
+Forbes_S <- cov(Forbes)
+Forbes_d <- apply(Forbes, MARGIN = 1, function(x) t(x-Forbes_mean) %*% 
+                    solve(Forbes_S) %*% (x-Forbes_mean))
+Forbes_chi <- qchisq((1:nrow(Forbes)-1/2)/nrow(Forbes),df=3)
+ggplot()+geom_point(aes(Forbes_chi,sort(Forbes_d))) + 
+  labs(title="Chi-Square plot for Forbes top 10",x="Theoretical Quantiles",y="Sample Quantiles")
+```
+
+From the chi square plot, data seems bivariate normal. There is one outlier that can be examined further. 
+
+## Problem 4.27 : Q-Q plots for the radiation data (closed door) for lambda = 0 and 1/4
+
+```{r}
+Radiation<- read.table("~/Documents/IIT SOM/Semester 2/MNG744 - Multivariate Data Analysis/Wichern_data/T4-1.DAT")
+setnames(Radiation, old=c("V1"),new= c("Radiation"))
+Radiation_log <- log(Radiation)
+Rad_Quants<- qnorm((1:nrow(Radiation_log)-1/2)/nrow(Radiation_log))
+a<-ggplot()+geom_point(aes(Rad_Quants,sort(Radiation_log[[1]])))+
+  labs(title="Q-Q Plot for lambda =0",x="Theoretical Quantiles",y="Sample Quantiles")
+```
+
+Q-Q plot of natutal log of radiation data (lambda = 0)
+
+```{r}
+a
+```
+
+From the above plot, it appears like tha the natural logarithm is normally distributed. To 
+cross check it, we also calculated the correlation between theoretical and sample quantiles.
+
+correlation coefficient 
+```{r}
+cor(Rad_Quants,sort(Radiation_log[[1]]))
+```
+The correlation coefficient (0.9706354) is less than the critical value at 10% level,
+therefore we can reject the normality assumption at 10% significance level.
+
+# for lamba = 1/4
+```{r}
+Radiation_trans <- 1/(1/4)*(Radiation^(1/4)-1)
+Rad_Quants_trans<- qnorm((1:nrow(Radiation_trans)-1/2)/nrow(Radiation_trans))
+b<-ggplot()+geom_point(aes(Rad_Quants_trans,sort(Radiation_trans))) +
+  labs(title="Q-Q Plot for lambda =1/4",x="Theoretical Quantiles",y="Sample Quantiles")
+```
+
+correlation coefficient 
+```{r}
+cor(Rad_Quants_trans,sort(Radiation_trans))
+```
+
+Q-Q plot for lambda = 1/4  
+```{r}
+b
+grid.arrange(a,b,nrow=1)
+```
+
+In the case when lambda = 1/4, the correlation coefficient (0.9845) is greater than the
+critical point at 5%; it suggests that lamda = 1/4 is a better choice for the transformation. 
+
+## Problem 4.32 : Examine marginal normality of the variables in radiotherapy data.
+```{r}
+RT<- read.table("~/Documents/IIT SOM/Semester 2/MNG744 - Multivariate Data Analysis/Wichern_data/T1-7.DAT")
+setnames(RT, old=c("V1","V2","V3","V4","V5","V6"),new= c("Symptoms","Activity","Sleep",
+                                                           "Eat","Appetite","Skin Reaction"))
+```
+As a first step we plotted histograms of all variables.
+```{r, include=FALSE}
+p1 <-ggplot(RT, aes(x=RT[,1]))+ geom_histogram(binwidth=1)+labs(x="Symptoms",y="Count")
+p2 <-ggplot(RT, aes(x=RT[,2]))+ geom_histogram(binwidth=0.5) + labs(x="Activity",y="Count")
+p3<- ggplot(RT, aes(x=RT[,3]))+ geom_histogram(binwidth=0.75)+labs(x="Sleep",y="Count")
+p4<- ggplot(RT, aes(x=RT[,4]))+ geom_histogram(binwidth=0.25)+labs(x="Eat",y="Count")
+p5<- ggplot(RT, aes(x=RT[,5]))+ geom_histogram(binwidth=0.5)+labs(x="Appetite",y="Count")
+p6<- ggplot(RT, aes(x=RT[,6]))+ geom_histogram(binwidth=0.5)+labs(x="Skin Reaction",y="Count")
+```
+
+Histograms of all the variables
+
+```{r}
+grid.arrange(p1,p2,p3,p4,p5,p6,ncol = 2, nrow=3) 
+```
+
+From these histograms it appears like Symptoms, Eat, and Appetite are normally distributed. Skin Reaction looks discrete. To examine further we construted Q-Q plots for all the variables.
+```{r}
+RT_Quants<- qnorm((1:nrow(RT)-1/2)/nrow(RT))
+New_RT <- RT
+for(i in 1:6){New_RT[i]=sort(RT[[i]])}
+New_RT$Theoretical_Quants=RT_Quants
+z <- melt(New_RT,id.vars="Theoretical_Quants")
+ggplot(z, aes(Theoretical_Quants,value)) + geom_point() + facet_wrap(~variable) + 
+  labs(title="Q-Q Plot for All Variables",x="Theoretical Quantiles",y="Sample Quantiles")
+```
+
+Plots confirm that the distributions of Sleep and Appetite are clearly normal; Skin Reaction and Activity are not normal. For Symptoms and Eat we need to dig deeper. Perhaps removing outliers can make them normal. 
+
+To further check the marginal distribution, we computed the correlation coefficients of all the variables with theoretical quantiles.
+```{r}
+RT_COR <- matrix(rep(0,6),nrow=1,ncol=6)
+for (i in 1:6){RT_COR[1,i]=cor(RT_Quants,sort(RT[,i]))}
+RT_COR <- as.data.frame(RT_COR)
+setnames(RT_COR, old=c("V1","V2","V3","V4","V5","V6"),new= c("Symptoms","Activity","Sleep",
+                                                         "Eat","Appetite","Skin Reaction"))
+print(kable(RT_COR))
+```
+
+By comparing the results of the correlation to ciritcal values, we know that only two  variables, Sleep and Appetite, are normal at 5% level, while the rest are not. 
+
+To check whether it is possible transform the variables not showing normaility to normal, we performed boxcox transformation. 
+
+Boxcox transformation for Symptom
+```{r}
+boxcoxnc(RT[,1], method = "sf", lambda = seq(-2,2,0.001), lambda2 = 0.005, plot = TRUE, alpha = 0.05, verbose = TRUE)
+```
+At 5% level of significance variable Symptom can be normalized by using lambda =0.643 
+and step value of 0.005. we used step value since there are non positive values in Symptoms.The histogram for the data post-transformation suggests normality.
+
+Boxcox transformation for Activity
+```{r}
+boxcoxnc(RT[,2], method = "sf", lambda = seq(-2,2,0.001), plot = TRUE, alpha = 0.01, verbose = TRUE)
+```
+Boxcox transformation cant transform the tariable Acitivity to normality for any level.
+
+```{r}
+boxcoxnc(RT[,4], method = "sf", lambda = seq(-2,2,0.001), plot = TRUE, alpha = 0.01, verbose = TRUE)
+```
+At 1% level of significance variable Eat can be normalized by using lambda =0.378.
+
+Boxcox transformation for Skin Reaction
+```{r}
+boxcoxnc(RT[,6], method = "sf", lambda = seq(-2,2,0.001), lambda2 = 0.005, plot = TRUE, alpha = 0.01, verbose = TRUE)
+```
+Variable Skin Reaction cant be transfomed to normal at any level of significance. 
+
+At last, we also tested the joined distribution of all the variables by computing squared statistical distance.
+
+```{r}
+RT_mean <- colMeans(RT)
+RT_S <- cov(RT)
+RT_d <- apply(RT, MARGIN = 1, function(x) t(x-RT_mean) %*% solve(RT_S) %*% (x-RT_mean))
+```
+
+Since more than 50% elements(57 out of 98) are smaller than 5.348 (chisq(0.5,6)), it implies more than 50% points lie inside this contour, therefor normality assumption cant be rejected.Although, normality assumption cant be rejected but we know that the variable Skin Reaction is clearly discrete and it cant be transformed to normality. 
+
+
+
+

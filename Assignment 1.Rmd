@@ -1,0 +1,140 @@
+---
+title: "MNG 744 Assignment 2"
+output:
+  word_document: default
+  html_notebook: default
+  pdf_document: default
+  html_document:
+    fig_height: 8
+    fig_width: 14
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r set-options, echo=FALSE, cache=FALSE}
+#options(width = 120)
+```
+
+```{r echo=FALSE, message=FALSE, results='hide'}
+library(corpcor)
+library(data.table)
+library(Hmisc)
+library(GGally)
+library(corrplot)
+library(plyr)
+library(knitr)
+```
+
+First we read the csv file in a dataframe women_track and renamed the variables. 
+```{r}
+women_track <- read.csv("~/Downloads/data set.csv")
+names(women_track) = c("Country","100","200","400","800","1500","3000","Marathon")
+```
+In the problem few records were given in minutes so we converted those in seconds.
+```{r}
+women_track[,5:8] = women_track[,5:8]*60
+```
+
+**Q 1.17**
+*1. Means of Running Events (in seconds)*
+```{r}
+colMeans(women_track[,2:8])
+```
+
+*2. Variance-Covariance Matrix of Running Events*
+```{r}
+kable(cov(women_track[,2:8]),format="pandoc",digits = 2,align = 'l',padding = 2L)
+```
+
+*3. Correlation Matrix* 
+```{r}
+track_corr <- rcorr(as.matrix(women_track[,2:8]))
+kable(track_corr$r,format="pandoc",digits = 3,align = 'l',padding = 2L)
+```
+
+There are large correlation coefficients among all events. Events up to 400m show higher correaltion with 100m, 200m, and 400m but comparatively lower correlation with 800,1500,3000,marathon, while events beyond 400m (800,1500,3000,marathon) show higher correlation with 800m, 1500m, 3000m and marathon but comparatively lower correlation with 100m, 200m, and 400m. These results indicates events can be divided in two groups based on their natures - 1 upto 100, 200,400 mt,  and 2. 800, 1500, 3000 and marathon.
+
+**Q 1.18**
+We created 7 new variables for track records in m/s. For marathon we used the distance as 42,195 meters, as specified in the problem. 
+```{r}
+women_track[,9:15] = 0
+setnames(women_track, old=c("V9","V10","V11","V12","V13","V14","V15"),new= c("100_ms","200_ms","400_ms","800_ms","1500_ms","3000_ms","Marathon_ms"))
+record_m_s <- c(100,200,400,800,1500,3000,42195)
+women_track[,9:15] = sweep(1/women_track[,2:8],2,record_m_s,"*")
+```
+
+*1. Means of Track Records in m/s*
+```{r}
+colMeans(women_track[,9:15])
+```
+
+*2. Variance_Covariance Matrix*
+```{r}
+kable(cov(women_track[,9:15]),format="markdown",digits = 2,align = 'l',padding =2L)
+```
+
+*3. Correlation Matrix*
+```{r}
+track_corr_ms <- rcorr(as.matrix(women_track[,9:15]))
+kable(track_corr_ms$r,format="markdown",digits = 3,align = 'l', padding = 2L)
+```
+
+The correlation coefficients for running events measured in mt/seconds are very much similar to that of correlation coefficients for national track records (calculated in 1.17 part 3)
+
+**Q 2.18**
+We saved the mean and variance-covariance matrices in matrix Mean and matrix Var_Covar, respectively.
+```{r}
+Mean<-matrix(c(0.766,0.508,0.438,0.161),nrow=4,ncol=1,byrow = TRUE)
+Var_Covar <- matrix(c(0.856,0.635,0.173,0.096,0.635,0.568,.128,.067,.173,.127,.171,.039,.096,.067,.039,.043),nrow = 4,ncol = 4,byrow = TRUE)
+```
+
+**a.** 
+Sample mean and variance-covariance matrix of a state's total energy consumption. 
+To calculate the sample mean, we constructed a row vector(Comb) of [1 1 1 1]. Sample mean of     total energy consumption is linear combination of Mean matrix with coffienct 1,i.e., mean[X1     + X2 + X3 + X4] or transpose(Comb)*[X]. We mulitplied transpose of vector Comb with the Mean matrix to calculate the sample mean. 
+   
+To calculate the sample variance we used the formulaiton: transpose(Comb)*(Var_Convar)*Comb. 
+```{r}
+Comb<- matrix(c(1,1,1,1),nrow=4,ncol=1,byrow = TRUE)
+Mean_Total_Energy <- t(Comb) %*% Mean
+Var_Total_Energy<-t(Comb) %*% Var_Covar %*% Comb
+```
+*a.1. Sample mean of Total Energy Consumption*
+```{r}
+Mean_Total_Energy[1]
+```
+*a.2 Sample vairance of Total Energy Consumption*
+```{r}
+Var_Total_Energy[1]
+```
+
+**b.** 
+Excess of petroleum consumption over natural gas consumption. 
+Sample mean of excess of petroleum consumption over natural gas consumption can be think of matrix muliplication of row vector [1 -1 0 0] and Mean matrix. we constructed a row vector(Excess) of [1 -1 0 0]. And as before calculate the sample mean as transpose(Excess)*Mean.
+
+Sample variance is calculated by transpose(Excess)*(Var_Convar)*Excess. While covariance of excess with total consumption is calculated using transpose(Comb)*(Var_Covar)*Excess
+```{r}
+Excess <- matrix(c(1,-1,0,0),nrow=4,ncol=1,byrow = TRUE)
+Excess_Mean <- t(Excess) %*% Mean
+Excess_Var<- t(Excess) %*% Var_Covar %*% Excess
+Excess_Samp_Covariance <- t(Comb) %*% Var_Covar %*% Excess
+
+```
+
+*b.1 Sample mean of excess consumption of petroleum over natural gas*
+```{r}
+Excess_Mean[1]
+```
+
+*b.2 Sample variance of excess consumption of petroleum over natural gas*
+```{r}
+Excess_Var[1]
+```
+
+*b.3 Sample covariance of excess consumption of petroleum over natural gas with total energy consumption*
+```{r}
+Excess_Samp_Covariance[1]
+```
+
+
+

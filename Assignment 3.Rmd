@@ -1,0 +1,210 @@
+---
+title: "Assignment_3"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(data.table)
+library(ellipse)
+```
+
+# Question 5.19
+
+```{r}
+Lumber<- read.table("~/Documents/IIT SOM/Semester 2/MNG744 - Multivariate Data Analysis/Wichern_data/t5-11.DAT")
+setnames(Lumber, old=c("V1","V2"),new= c("Stiffness","Bending Strength"))
+Mean_Lumber <- colMeans(Lumber)
+Cov_Lumber <- cov(Lumber)
+C<-((nrow(Lumber)-1)*ncol(Lumber)/(nrow(Lumber)-ncol(Lumber)))*qf(.95,2,28)
+CI_Lumber <- matrix(rep(0,4),nrow=2,ncol=2)
+for(i in 1:2){ 
+  CI_Lumber[i,1] <- Mean_Lumber[i]-sqrt(C)*sqrt(Cov_Lumber[i,i]/nrow(Lumber))
+  CI_Lumber[i,2] <- Mean_Lumber[i]+sqrt(C)*sqrt(Cov_Lumber[i,i]/nrow(Lumber))
+}
+```
+
+95% confidence interval for Stiffness
+```{r}
+CI_Lumber[1,]
+```
+
+95% confidence interval for Bending Strength
+```{r}
+CI_Lumber[2,]
+```
+
+## 95% confiedence ellipse
+```{r}
+plot(ellipse(Cov_Lumber,centre = Mean_Lumber,t=sqrt(C/30)),type="l",xlim=c(1000,3000),ylim=c(4000,12000), 
+     main="95% Confidence Ellipse for \nLumber Stiffness and Bending Strength")
+points(Mean_Lumber[1],Mean_Lumber[2],col="green",pch=19)
+points(2000,10000,col="red")
+points(Lumber)
+lines(x=c(CI_Lumber[1,1] , CI_Lumber[1,2]), y=c(CI_Lumber[2,1],CI_Lumber[2,1]), lty=2, lwd=1.5,col="blue")
+lines(x=c(CI_Lumber[1,1] , CI_Lumber[1,2]), y=c(CI_Lumber[2,2],CI_Lumber[2,2]), lty=2, lwd=1.5,col="blue")
+lines(x=c(CI_Lumber[1,1] , CI_Lumber[1,1]), y=c(CI_Lumber[2,1],CI_Lumber[2,2]), lty=2, lwd=1.5,col="blue")
+lines(x=c(CI_Lumber[1,2] , CI_Lumber[1,2]), y=c(CI_Lumber[2,1],CI_Lumber[2,2]), lty=2, lwd=1.5,col="blue")
+text(x=1970, y=7700, "T^2")
+```
+
+A 95% confidence ellipse for the data is shown above. Green dot within the ellipse is the mean of stiffness and bending strengh, while the red dot corresponds to given mean (2,000,10,000). Simultaneous T^2 confidence interval for the means is shown by the blue rectangle. As it can be seen from the plot as well as from confidence intervals for stiffness and bending strength, the given mean (2000,10000) lies outside of the ellipse and are not bounded by the confidence intervals. From these findings we can conclude that the data isn't consistent with the "typical" value. 
+
+## Q-Q plot
+```{r}
+qqnorm(Lumber[,1], main = "Normal Q-Q Plot of Stiffness")
+qqline(Lumber[,1])
+qqnorm(Lumber[,2], main = "Normal Q-Q Plot of Bending Strength")
+qqline(Lumber[,2])
+```
+
+## Scatter Plot
+```{r}
+plot(Lumber[,1], Lumber[,2],type='p',main = "Scatter Plot of Lumber data",xlab=("Stiffness"),ylab = "Bending Strength")
+```
+
+Normal Q-Q plots of both stiffness and bending strength appears to follow the normal distribution. In addition, scatter plot doesn't show any siginificant departure from the normality assumption. Therefore, the bivariate normal is a viable population model for the lumber data.
+
+# Question 5.22
+
+## Q-Q and Scatter Plots with outliers
+```{r}
+Transport_Cost<- read.table("~/Documents/IIT SOM/Semester 2/MNG744 - Multivariate Data Analysis/Wichern_data/t5-13.DAT")
+setnames(Transport_Cost, old=c("V1","V2","V3"),new= c("Fuel","Repair","Capital"))
+```
+
+### Q-Q Plots of marginal distributions of fuel,repair, and capital cost.
+```{r}
+par(mfrow=c(2, 2))
+for (i in 1:3){
+  qqnorm(Transport_Cost[,i],main=paste("Normal Q-Q plot of ",names(Transport_Cost[i])))
+}
+```
+
+From Q-Q plots it is evident that there are two outliers in the case of Fuel, while there are no obvious outliers in Repair and Capital. 
+
+###Scatter Plots for Transport Data
+```{r}
+pairs(Transport_Cost)
+```
+Scatter plots confirm the initial findings. Scatter plots of Repair and Captial with Fuel clearly show two bivariate outliers. But the scatter plot of capital and repair doesn't doesn't show any obvious outlier.
+
+## Q-Q and Scatter Plots after outlier removal
+
+### Q-Q Plots of marginal distributions of fuel,repair, and capital cost.
+```{r}
+New_Transport <- Transport_Cost[-c(9,21),]
+par(mfrow=c(2,2))
+for (i in 1:3){
+  qqnorm(New_Transport[,i],main=paste("Normal Q-Q plot of ",names(New_Transport[i])))
+}
+```
+
+###Scatter plots for transport data after removing outliers###
+```{r}
+pairs(New_Transport)
+```
+
+Removal of observations 9 and 21 normalizes the data. Although it appears like that variable Capital still has two outliers but the scatter plots confirms there are no bivariate outliers anymore. 
+
+# Boneferroni Intervals
+```{r}
+Mean_Transport <- colMeans(Transport_Cost)
+Cov_Transport <- cov(Transport_Cost)
+Conf_Transport_Bon<- matrix(rep(0,6),nrow=3,ncol=2)
+
+for(i in 1:3){ 
+  Conf_Transport_Bon[i,1] <-   Mean_Transport[i]-qt(1-0.05/6,24)*sqrt(Cov_Transport[i,i]/nrow(Transport_Cost))
+  Conf_Transport_Bon[i,2] <- Mean_Transport[i]+qt(1-0.05/6,24)*sqrt(Cov_Transport[i,i]/nrow(Transport_Cost))
+  }
+Conf_Transport_Bon
+```
+
+# Simultaneous T^2
+```{r}
+Conf_Transport_Sim<- matrix(rep(0,6),nrow=3,ncol=2)
+C_Transport<-((nrow(Transport_Cost)-1)*ncol(Transport_Cost)/(nrow(Transport_Cost)-ncol(Transport_Cost)))*qf(.95,3,22)
+for(i in 1:3){ 
+  Conf_Transport_Sim[i,1] <- Mean_Transport[i]-sqrt(C_Transport)*sqrt(Cov_Transport[i,i]/nrow(Transport_Cost))
+  Conf_Transport_Sim[i,2] <- Mean_Transport[i]+sqrt(C_Transport)*sqrt(Cov_Transport[i,i]/nrow(Transport_Cost))
+}
+Conf_Transport_Sim
+```
+
+The values given by T^2 Simultaneous and Boneferroni supports the theoritical foundation. For each variable the confidence intervals of means given by Simultaneous T^2 are wider than that of given by Boneferroni correction.
+
+# Question 5.30
+### In the case of large sample the tests used for simultaneously T^2 and Boneferroni are chi-square and z, respectively. We performed our calculations using those tests.
+
+```{r}
+Mean_Fuel<-matrix(c(0.766,0.508,0.438,0.161),nrow=4,ncol=1,byrow = TRUE)
+Var_Covar_Fuel <- matrix(c(0.856,0.635,0.173,0.096,0.635,0.568,.128,.067,.173,.127,.171,.039,.096,.067,.039,.043),nrow = 4,ncol = 4,byrow = TRUE)
+```
+
+## Large sample simultaneous T^2
+
+### confidence interval for means
+```{r}
+Conf_Fuel_Sim<- matrix(rep(0,8),nrow=4,ncol=2)
+for(i in 1:4){ 
+  Conf_Fuel_Sim[i,1] <- Mean_Fuel[i]-sqrt(qchisq(0.95,4))*sqrt(Var_Covar_Fuel[i,i]/50)
+  Conf_Fuel_Sim[i,2] <- Mean_Fuel[i]+sqrt(qchisq(0.95,4))*sqrt(Var_Covar_Fuel[i,i]/50)
+}
+Conf_Fuel_Sim
+```
+
+### confidence interval for total
+```{r}
+T_Matrix <- matrix(c(1,1,1,1),nrow=1,ncol=4)
+Conf_Fuel_Sim_Total<- matrix(rep(0,2),nrow=1,ncol=2)
+Conf_Fuel_Sim_Total[1,1] <- (T_Matrix)%*%Mean_Fuel-sqrt(qchisq(0.95,4))*sqrt((T_Matrix%*%Var_Covar_Fuel%*%t(T_Matrix))/50) 
+Conf_Fuel_Sim_Total[1,2] <- (T_Matrix)%*%Mean_Fuel+sqrt(qchisq(0.95,4))*sqrt((T_Matrix%*%Var_Covar_Fuel%*%t(T_Matrix))/50) 
+Conf_Fuel_Sim_Total
+```
+
+### confidence interval for difference
+```{r}
+D_Matrix <- matrix(c(1,-1,0,0),nrow=1,ncol=4)
+Conf_Fuel_Sim_Diff<- matrix(rep(0,2),nrow=1,ncol=2)
+Conf_Fuel_Sim_Diff[1,1] <- (D_Matrix)%*%Mean_Fuel-sqrt(qchisq(0.95,4))*sqrt((D_Matrix%*%Var_Covar_Fuel%*%t(D_Matrix))/50)
+Conf_Fuel_Sim_Diff[1,2] <- (D_Matrix)%*%Mean_Fuel+sqrt(qchisq(0.95,4))*sqrt((D_Matrix%*%Var_Covar_Fuel%*%t(D_Matrix))/50)
+Conf_Fuel_Sim_Diff
+```
+
+## Large Sample Boneferroni
+
+### confidence interval for mean
+```{r}
+Conf_Fuel_Bon<- matrix(rep(0,8),nrow=4,ncol=2)
+for(i in 1:4){ 
+  Conf_Fuel_Bon[i,1] <- Mean_Fuel[i]-qnorm(1-0.05/8)*sqrt(Var_Covar_Fuel[i,i]/50)
+  Conf_Fuel_Bon[i,2] <- Mean_Fuel[i]+qnorm(1-0.05/8)*sqrt(Var_Covar_Fuel[i,i]/50)
+}
+Conf_Fuel_Bon
+```
+
+### confidence interval for total
+```{r}
+T_Bon_Matrix <- matrix(c(1,1,1,1),nrow=1,ncol=4)
+Conf_Fuel_Bon_Total<- matrix(rep(0,2),nrow=1,ncol=2)
+Conf_Fuel_Bon_Total[1,1] <- (T_Bon_Matrix)%*%Mean_Fuel - qnorm(1-0.05/8)*sqrt((T_Bon_Matrix%*%Var_Covar_Fuel%*%t(T_Bon_Matrix))/50)
+Conf_Fuel_Bon_Total[1,2] <- (T_Bon_Matrix)%*%Mean_Fuel + qnorm(1-0.05/8)*sqrt((T_Bon_Matrix%*%Var_Covar_Fuel%*%t(T_Bon_Matrix))/50)
+Conf_Fuel_Bon_Total
+```
+
+### confidence interval for difference
+```{r}
+D_Bon_Matrix <- matrix(c(1,-1,0,0),nrow=1,ncol=4)
+Conf_Fuel_Bon_Diff<- matrix(rep(0,2),nrow=1,ncol=2)
+Conf_Fuel_Bon_Diff[1,1] <- (D_Bon_Matrix)%*%Mean_Fuel - qnorm(1-0.05/8)*sqrt((D_Bon_Matrix%*%Var_Covar_Fuel%*%t(D_Bon_Matrix))/50)
+Conf_Fuel_Bon_Diff[1,2] <- (D_Bon_Matrix)%*%Mean_Fuel + qnorm(1-0.05/8)*sqrt((D_Bon_Matrix%*%Var_Covar_Fuel%*%t(D_Bon_Matrix))/50)
+Conf_Fuel_Bon_Diff
+```
+
+Both the tests show that the mean consumption of natural gas is higher than that of the petroleum.

@@ -1,0 +1,208 @@
+---
+title: "Assignment 4"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(heplots)
+```
+
+## Q 6.23
+```{r}
+Iris<- read.table("~/Documents/IIT SOM/Semester 2/MNG744 - Multivariate Data Analysis/Wichern_data/T11-5.DAT")
+head(Iris,n=5)
+Iris_New <- Iris[,c(-1,-3)]
+names(Iris_New)<- list(V1="Sepal_Width",V2="Petal_Width",V3="Variety")
+Mean_Matrix = daply(Iris_New, c("Variety"), 
+                    function(Iris_New) colMeans(cbind(Iris_New$Sepal_Width,Iris_New$Petal_Width)))
+Mean_Matrix = t(Mean_Matrix)
+Covar_Matrix = daply(Iris_New, c("Variety"), 
+                     function(Iris_New) cov(cbind(Iris_New$Sepal_Width, Iris_New$Petal_Width)))
+```
+
+First we computed W & B matrices to evaluate Wilk's Lamda
+```{r}
+W = 49*(Covar_Matrix[1,,] + Covar_Matrix[2,,] + Covar_Matrix[3,,])
+W
+Grand_Mean = (1/3)*(Mean_Matrix[,1]+Mean_Matrix[,2]+Mean_Matrix[,3])
+Grand_Mean = t(Grand_Mean)
+B = 49*(t(Mean_Matrix[,1]-Grand_Mean)%*%((Mean_Matrix[,1]-Grand_Mean))+
+          t(Mean_Matrix[,2]-Grand_Mean)%*%((Mean_Matrix[,2]-Grand_Mean))+
+          t(Mean_Matrix[,3]-Grand_Mean)%*%((Mean_Matrix[,3]-Grand_Mean)))
+B
+
+Wilks_Lambda = det(W)/det(B+W)
+Wilks_Lambda
+```
+
+We use the exact test correspoinding to p = 2 and g =3 
+```{r}
+test = ((1-sqrt(Wilks_Lambda))/sqrt(Wilks_Lambda))*((150-2-2)/2)
+F = qf(0.95,4,292)
+F
+```
+
+Here test > F, therefore we reject the null hypothesis that all means are same at 0.05 level.
+
+We also modeled ane-way manova and one-way anova to understand the relationship between independent and dependent variables. 
+
+```{r}
+Iris_man <- manova(cbind(Sepal_Width, Petal_Width) ~ as.factor(Variety), data = Iris_New)
+```
+One way Manova summary
+```{r}
+summary(Iris_man)
+```
+It is evident that variety is significant in determining width.
+
+One way Anova summary
+```{r}
+summary(aov(Iris_man))
+```
+At 0.05 level variety is significant for both petal and sepal width.
+
+### Sepal Width CI
+```{r}
+CI_Set_Versi_Sepal<-(Mean_Matrix[1,1]-Mean_Matrix[1,2])+sqrt((W[1]/(150-3)*(1/50+1/50)))*qt((c((0.05/(6*2)),(1-0.05/(6*2)))),(150-3))
+CI_Set_Virg_Sepal<-(Mean_Matrix[1,1]-Mean_Matrix[1,3])+sqrt((W[1]/(150-3))*(1/50+1/50))*qt((c((0.05/(6*2)),1-0.05/(6*2))),(150-3))
+CI_Versi_Virg_Sepal<-(Mean_Matrix[1,2]-Mean_Matrix[1,3])+sqrt((W[1]/(150-3))*(1/50+1/50))*qt((c((0.05/(6*2)),1-0.05/(6*2))),(150-3))
+Sepal_CI = rbind(CI_Set_Versi_Sepal,CI_Set_Virg_Sepal,CI_Versi_Virg_Sepal)
+Sepal_CI
+```
+Confidence Intervals for Sepal Widht show that the mean are different for all the varities. 
+
+### Petal Width CI
+```{r}
+CI_Set_Versi_Petal<-(Mean_Matrix[2,1]-Mean_Matrix[2,2])+sqrt((W[2]/(150-3))*(1/50+1/50))*qt((c((0.05/(6*2)),(1-0.05/(6*2)))),(150-3))
+CI_Set_Virg_Petal<-(Mean_Matrix[2,1]-Mean_Matrix[2,3])+sqrt((W[2]/(150-3))*(1/50+1/50))*qt((c((0.05/(6*2)),(1-0.05/(6*2)))),(150-3))
+CI_Versi_Virg_Petal<-(Mean_Matrix[2,2]-Mean_Matrix[2,3])+sqrt((W[2]/(150-3))*(1/50+1/50))*qt((c((0.05/(6*2)),(1-0.05/(6*2)))),(150-3))
+Petal_CI = rbind(CI_Set_Versi_Petal,CI_Set_Virg_Petal,CI_Versi_Virg_Petal)
+Petal_CI
+```
+As before, mean petal width is different for all varities as well.
+
+###Equality of variance
+```{r}
+boxM(cbind(Sepal_Width, Petal_Width) ~ as.factor(Variety), data=Iris_New)
+```
+Box's M test shows that the covariances are not homogeneous. To check whether it was due to non normailty in the data we constructed q-q plots for the residuals.
+
+###Normality 
+```{r}
+par(mfrow=c(1,2))
+qqnorm(Iris_man$residuals[,1])
+qqline(Iris_man$residuals[,1],col=2)
+qqnorm(Iris_man$residuals[,2])
+qqline(Iris_man$residuals[,2],col=2)
+```
+Q-Q plots confirms the normality. Therefore, we can conclude that the covariances are not homogeneous. 
+
+## Question 6.31
+```{r}
+Peanuts<- read.table("~/Documents/IIT SOM/Semester 2/MNG744 - Multivariate Data Analysis/Wichern_data/T6-17.DAT")
+names(Peanuts)<- list(V1="Location",V2="Variety",V3="Yield",V4="SdMatKer",V3="SeedSize")
+Peanuts["Location"] <- as.factor(Peanuts[,1])
+Peanuts["Variety"] <- as.factor(Peanuts[,2])
+Loc_Peanuts =  as.factor(Peanuts[,1])
+Var_Peanuts = as.factor(Peanuts[,2])
+```
+
+### Part a
+```{r}
+Y = cbind(Peanuts[,3],Peanuts[,4],Peanuts[,5])
+mv_fit <- manova(Y~Loc_Peanuts*Var_Peanuts)
+summary(mv_fit,test="Wilk")
+```
+MANOVA table suggests that Location and Variety have significant effects; while intercation effect isn't present. The absence of interaction effect can be interpreted as that the location and variety effects are additive.
+
+### part b. residuals from manova
+```{r}
+par(mfrow=c(1,3))
+qqnorm(mv_fit$residuals[,1])
+qqline(mv_fit$residuals[,1],col=2)
+qqnorm(mv_fit$residuals[,2])
+qqline(mv_fit$residuals[,2],col=2)
+qqnorm(mv_fit$residuals[,3])
+qqline(mv_fit$residuals[,3],col=2)
+```
+
+### equality of variance
+```{r}
+boxM(Peanuts[,3:5],Peanuts[,1])
+boxM(Peanuts[,3:5],Peanuts[,2])
+```
+
+From Q-Q plots and Box's M test, it appears like that there is no violation of the usual ANOVA assumptions. 
+
+### part c
+```{r}
+summary(aov(mv_fit))
+```
+
+Results of two factor ANOVA show absense of location effect for all three variables. Varitey and Interaction are significant for Yield and Sound Mature Kernet but in the case of Seed Size only variety has a significant effect. 
+
+### pard d
+```{r}
+Mean_Peanuts = daply(Peanuts, c("Peanuts$Variety"), 
+                     function(Peanuts) colMeans(cbind(Peanuts$Yield,
+                        Peanuts$SdMatKer,Peanuts$SeedSize)))
+E = summary(mv_fit)$SS[4]
+```
+
+Matrix of mean differences
+```{r}
+Mean_Peanuts
+```
+
+Residual Matrix
+```{r}
+E
+```
+
+### Bonferroni Intervals
+```{r}
+p = 3
+g= 3
+b=2
+n = 2
+nu = g*b*(n-1)
+int = p*g*(g-1)
+```
+
+### Yield CI
+```{r}
+Y_Five_Six<-(Mean_Peanuts[1,1]-Mean_Peanuts[2,1])+sqrt(2*E[[1]][1]/(nu*b*n))*qt(c(0.05/int,1-0.05/int),nu)
+Y_Five_Eight<-(Mean_Peanuts[1,1]-Mean_Peanuts[3,1])+sqrt(2*E[[1]][1]/(nu*b*n))*qt(c(0.05/int,1-0.05/int),nu)
+Y_Six_Eight<-(Mean_Peanuts[2,1]-Mean_Peanuts[3,1])+sqrt(2*E[[1]][1]/(nu*b*n))*qt(c(0.05/int,1-0.05/int),nu)
+Yield_CI = rbind(Y_Five_Six,Y_Five_Eight,Y_Six_Eight)
+Yield_CI
+```
+The above result shows that there is no difference in the means of Yield for different varities. 
+
+### SdMatKEr CI
+```{r}
+Sd_Five_Six<-(Mean_Peanuts[1,2]-Mean_Peanuts[2,2])+sqrt(2*E[[1]][5]/(nu*b*n))*qt(c(0.05/int,1-0.05/int),nu)
+Sd_Five_Eight<-(Mean_Peanuts[1,2]-Mean_Peanuts[3,2])+sqrt(2*E[[1]][5]/(nu*b*n))*qt(c(0.05/int,1-0.05/int),nu)
+Sd_Six_Eight<-(Mean_Peanuts[2,2]-Mean_Peanuts[3,2])+sqrt(2*E[[1]][5]/(nu*b*n))*qt(c(0.05/int,1-0.05/int),nu)
+SD_CI = rbind(Sd_Five_Six,Sd_Five_Eight,Sd_Six_Eight)
+SD_CI
+```
+As before, there is no difference in the means of sound maturity kernel for different varities. 
+
+###l Seed Size CI
+```{r}
+SS_Five_Six<-(Mean_Peanuts[1,3]-Mean_Peanuts[2,3])+sqrt(2*E[[1]][9]/(nu*b*n))*qt(c(0.05/int,1-0.05/int),nu)
+SS_Five_Eight<-(Mean_Peanuts[1,3]-Mean_Peanuts[3,3])+sqrt(2*E[[1]][9]/(nu*b*n))*qt(c(0.05/int,1-0.05/int),nu)
+SS_Six_Eight<-(Mean_Peanuts[2,3]-Mean_Peanuts[3,3])+sqrt(2*E[[1]][9]/(nu*b*n))*qt(c(0.05/int,1-0.05/int),nu)
+SS_CI = rbind(SS_Five_Six,SS_Five_Eight,SS_Six_Eight)
+SS_CI
+```
+The means of seed size are also not significantly different for variety. It appears like individually variety doesn't have any effect on any of the parameters.
+

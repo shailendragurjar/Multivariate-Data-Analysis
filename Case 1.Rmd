@@ -1,0 +1,100 @@
+---
+title: "Marketing Salary"
+output: html_document
+---
+
+*Problem : To study the relationship, if any, between the years of experience and salary for individuals employed in inside and outside marketing positions. On the survey, respondents were asked to specify one of three levels of years of experience: low (1- 10 years), medium (11- 20 years) and high (21 or more years). The repsonses were recorded for 120 emloyees.*
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(data.table)
+library(car)
+library(ggplot2)
+library(gridExtra)
+library(knitr)
+```
+
+```{r}
+Salary <- read.csv("~/Documents/IIT SOM/Semester 2/MNG744 - Multivariate Data Analysis/Case 1/MarketingSalary.csv")
+Salary <- Salary[,-1]
+setnames(Salary, old=c("Salary...."),new= c("Salary"))
+```
+
+## Snapshot of data
+```{r}
+head(Salary,n=10)
+```
+
+## Summary of data 
+```{r}
+summary(Salary)
+```
+All factors have equal numbers of observations, therefore the data is balanced. 
+
+## Boxplots of Experience and Position with Salary
+To understand the spread of salaries we started with drawing boxplots.
+```{r}
+p1<-ggplot(Salary,aes(Position,Salary))+geom_boxplot() + labs(title = "Boxplot of Salary and Position") + theme_bw()
+p2<-ggplot(Salary,aes(Experience,Salary))+geom_boxplot() + labs(title = "Boxplot of Salary and Experience") + theme_bw()
+grid.arrange(p1,p2,ncol=2)
+```
+
+The difference in salaries for the different positions is obvious from the box plot. However, the difference is not much pronounced between the three experience groups.
+
+## Median Salary for combination of Experience and Position
+Boxplots provided a good idea of differences in salaries with respect to Position and Experience, but also wanted to see how the salaries varies for different combination of Experience and Position.
+```{r}
+aggregate(Salary$Salary, by = list(Group.Pos=Salary$Position,Group.Exp=Salary$Experience),median)
+aggregate(Salary$Salary, by = list(Group.Pos=Salary$Experience,Group.Exp=Salary$Position),median)
+```
+
+Groups means indicate that while there isn't much difference in the salaries of inside marketing professionals at different experience levels. While the salaries of outside marketing professionals are higher than that of inside marketing professionals at every level. In addition, with experience the salaries of outside professionals varies. 
+
+## ANOVA Model
+After getting a feel of the data, we performed two-way ANOVA with Position and Experience as independent variables and Salary as dependent variable.
+```{r}
+fitSalary <- aov(Salary~Position*Experience, data = Salary)
+summary(fitSalary)
+```
+From the results of two-way ANOVA, we can see that Position, Experience, and interaction of Position and Experience are statistically significant. The presence of interaction require a further analysis to be done to find out the which combimations of Experience and Position are significant. 
+
+## Normality of Residuals 
+After fitting the ANOVA model, we checked for the normality of the residuals. 
+```{r}
+par(mfrow=c(1,2))
+qqnorm(fitSalary$residuals, main="Normal Q-Q plot of Residuals")
+qqline(fitSalary$residuals)
+hist(fitSalary$residuals,main = "Histogram of Residuals",xlab="Residuals")
+```
+
+Both q-q plot and histogram of the residuals suggest that the normality assumption is not violated.
+
+## Equality of Variance (Levene's test)
+We also performed Levene's test to assess the equality of variance assumption. 
+```{r}
+leveneTest(Salary~Experience*Position, data = Salary)
+```
+Since the p-value (0.9962) is greater than 0.05, equality of variances can be assumed.
+
+## Interaction Plots
+As ANOVA showed presence of interaction effect, we plotted interactions plot to understand the relationship.
+
+```{r}
+interaction.plot(Salary$Experience,Salary$Position,Salary$Salary,type="b",col=c(2:3),leg.bty="o",leg.bg="beige",lwd=2,pch=c(18,24),xlab="Position",ylab="Salary",main="Interaction plot",trace.label = "Position")
+interaction.plot(Salary$Position,Salary$Experience,Salary$Salary,type="b",col=c(2:4),leg.bty="o",leg.bg="beige",lwd=2,pch=c(18,24),xlab="Experience",ylab="Salary",main="Interaction plot",trace.label = "Experience")
+```
+
+From the plots, it appears like unlike the outside marketing professionals, the salaries of inside marketing professionals don't vary much with their experience level. 
+
+## Tukey Test
+To check the relationship of experience and position with salary statistically we performed Tukey Test. For the interaction 15 hypothesis - all possible combinations of Experience and Position, are tested by Tukey's test.
+
+```{r}
+TukeyHSD(fitSalary)
+```
+The p values for the hypothesis tests show that there is significiant difference in the salaries between inside and outside marketing professionals at all levels of experiences; there is also significant difference between salaries of outside marketing professionals at different levels of experiences; while the salary difference for inside marketing professionals isn't significant at any level of experience. 
+
+In other words, these findings suggest while outside marketing professionals receive a higher salary compared to inside marketing professionals at every level of experiences and the salary of outside marketing professionals varies with respect to their experience level, it is not the case with the inside marketing professionals. The differences in mean of salaries of inside marketing doesn't professionals vary as they gain more experience, i.e. their salaries are more or less static.    
